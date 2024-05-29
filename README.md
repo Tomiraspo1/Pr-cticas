@@ -1,2 +1,2 @@
-# Pr-cticas
+# Practicas
 Prácticas git
