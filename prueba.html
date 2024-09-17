@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de comissões - Clínica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Gestão de comissões</h1>
+        
+        <!-- Panel de Configuración -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                Configuração da Comissão
+            </div>
+            <div class="card-body">
+                <form id="comissionForm">
+                    <div class="mb-3">
+                        <label for="divisionRange" class="form-label">Divisão da Comissão (Clínica/vendedor)</label>
+                        <input type="range" class="form-range" id="divisionRange" min="0" max="100" value="50" oninput="updateValues()">
+                        <p>Clínica: <span id="rangeValue">50%</span> / Vendedor: <span id="vendedorValue">50%</span></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="vendedor" class="form-label">Seleccionar Vendedor</label>
+                        <select class="form-select" id="vendedor" aria-label="Seleccionar Vendedor">
+                            <!-- Opciones de vendedor serán llenadas dinámicamente -->
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary mb-3" onclick="guardarConfiguracion()">Guardar configuração</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Panel de Comisiones -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                Comissões actuais
+            </div>
+            <div class="card-body">
+                <table class="table table-striped" id="comisionesTable">
+                    <thead>
+                        <tr>
+                            <th>Plano</th>
+                            <th>Vendedor</th>
+                            <th>Código do vendedor</th>
+                            <th>Comissão Clínica</th>
+                            <th>Comissão do vendedor</th>
+                            <th>Data e Hora de venda</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Registros de comisiones serán llenados dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Panel de Vendedores -->
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                Gestão de Vendedores
+            </div>
+            <div class="card-body">
+                <input type="text" id="newVendedor" class="form-control mb-3" placeholder="Nome do novo vendedor">
+                <input type="text" id="vendedorCodigo" class="form-control mb-3" placeholder="Código do vendedor">
+                <button class="btn btn-secondary mb-3" onclick="adicionarVendedor()">Adicionar novo vendedor</button>
+                <table class="table table-hover" id="vendedoresTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Código do vendedor</th>
+                            <th>Acções</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Lista de vendedores será llenada dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función para actualizar los valores del rango
+        function updateValues() {
+            let division = document.getElementById('divisionRange').value;
+            document.getElementById('rangeValue').textContent = division + '%';
+            document.getElementById('vendedorValue').textContent = (100 - division) + '%';
+        }
+
+        // Inicialización de vendedores y configuración en LocalStorage
+        function iniciarDatos() {
+            if (!localStorage.getItem('vendedores')) {
+                // Si no existen datos de vendedores, inicializamos con datos básicos
+                localStorage.setItem('vendedores', JSON.stringify([
+                    { id: 1, nombre: 'Vendedor 1', codigo: 'V12345' },
+                    { id: 2, nombre: 'Vendedor 2', codigo: 'V67890' }
+                ]));
+            }
+            cargarVendedores();
+            cargarComisiones();
+        }
+
+        // Función para cargar los vendedores desde LocalStorage
+        function cargarVendedores() {
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let selectVendedor = document.getElementById('vendedor');
+            let tableBody = document.getElementById('vendedoresTable').getElementsByTagName('tbody')[0];
+
+            // Limpiar el contenido actual
+            selectVendedor.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            // Añadir cada vendedor al select y la tabla
+            vendedores.forEach(vendedor => {
+                let option = document.createElement('option');
+                option.value = vendedor.id;
+                option.textContent = vendedor.nombre;
+                selectVendedor.appendChild(option);
+
+                let row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${vendedor.nombre}</td>
+                    <td>${vendedor.codigo}</td>
+                    <td>
+                        <button class="btn btn-secondary mb-3" onclick="editarVendedor(${vendedor.id})">Editar</button>
+                        <button class="btn btn-danger mb-3" onclick="eliminarVendedor(${vendedor.id})">Eliminar</button>
+                    </td>
+                `;
+            });
+        }
+
+        // Función para guardar la configuración de comisión en LocalStorage
+        function guardarConfiguracion() {
+            let vendedorId = document.getElementById('vendedor').value;
+            let comisionClinica = document.getElementById('divisionRange').value;
+            let comisionVendedor = 100 - comisionClinica;
+
+            // Obtener la fecha y hora actual
+            let now = new Date();
+            let fecha = now.toLocaleDateString();
+            let hora = now.toLocaleTimeString();
+
+            let configuracion = {
+                vendedorId: vendedorId,
+                comisionClinica: comisionClinica,
+                comisionVendedor: comisionVendedor,
+                fecha: fecha,
+                hora: hora
+            };
+
+            // Guardar la configuración en LocalStorage
+            let configuraciones = JSON.parse(localStorage.getItem('configuraciones')) || [];
+            configuraciones.push(configuracion);
+            localStorage.setItem('configuraciones', JSON.stringify(configuraciones));
+
+            alert('Configuração salva com sucesso!');
+            cargarComisiones();
+        }
+
+        // Función para cargar las comisiones desde LocalStorage
+        function cargarComisiones() {
+            let configuraciones = JSON.parse(localStorage.getItem('configuraciones')) || [];
+            let tableBody = document.getElementById('comisionesTable').getElementsByTagName('tbody')[0];
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+
+            tableBody.innerHTML = ''; // Limpiar contenido previo
+
+            configuraciones.forEach(config => {
+                let vendedor = vendedores.find(v => v.id == config.vendedorId);
+                let row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>Plano A</td> <!-- Esto sería dinámico según el plan -->
+                    <td>${vendedor.nombre}</td>
+                    <td>${vendedor.codigo}</td>
+                    <td>${config.comisionClinica}%</td>
+                    <td>${config.comisionVendedor}%</td>
+                    <td>${config.fecha} ${config.hora}</td>
+                `;
+            });
+        }
+
+        // Función para adicionar un nuevo vendedor
+        function adicionarVendedor() {
+            let nuevoNombre = document.getElementById('newVendedor').value;
+            let nuevoCodigo = document.getElementById('vendedorCodigo').value;
+            if (nuevoNombre === '' || nuevoCodigo === '') {
+                alert('Por favor, insira o nome e o código do vendedor.');
+                return;
+            }
+
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let nuevoVendedor = {
+                id: vendedores.length + 1,
+                nombre: nuevoNombre,
+                codigo: nuevoCodigo
+            };
+
+            vendedores.push(nuevoVendedor);
+            localStorage.setItem('vendedores', JSON.stringify(vendedores));
+            cargarVendedores();
+            document.getElementById('newVendedor').value = ''; // Limpiar el campo de entrada
+            document.getElementById('vendedorCodigo').value = ''; // Limpiar el campo de código
+        }
+
+        // Función para eliminar un vendedor
+        function eliminarVendedor(id) {
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            vendedores = vendedores.filter(vendedor => vendedor.id !== id);
+            localStorage.setItem('vendedores', JSON.stringify(vendedores));
+            cargarVendedores();
+        }
+
+        // Función para editar un vendedor (simple para pruebas)
+        function editarVendedor(id) {
+            let nuevoNombre = prompt('Insira o novo nome do vendedor:');
+            let nuevoCodigo = prompt('Insira o novo código do vendedor:');
+            if (nuevoNombre === null || nuevoCodigo === null || nuevoNombre === '' || nuevoCodigo === '') return;
+
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let vendedor = vendedores.find(v => v.id === id);
+            vendedor.nombre = nuevoNombre;
+            vendedor.codigo = nuevoCodigo;
+            localStorage.setItem('vendedores', JSON.stringify(vendedores));
+            cargarVendedores();
+        }
+
+        // Inicializar datos y cargar vendedores al cargar la página
+        window.onload = iniciarDatos;
+        function eliminarVendedor(id) {
+    let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+    vendedores = vendedores.filter(vendedor => vendedor.id !== id);
+    localStorage.setItem('vendedores', JSON.stringify(vendedores));
+
+    // Transferir comisiones al eliminar el vendedor
+    transferirComisiones(id);
+    cargarVendedores();
+}
+
+function desactivarVendedor(id) {
+    let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+    let vendedor = vendedores.find(v => v.id === id);
+    vendedor.activo = false; // Marcar como inactivo
+    localStorage.setItem('vendedores', JSON.stringify(vendedores));
+
+    // Transferir comisiones al desactivar el vendedor
+    transferirComisiones(id);
+    cargarVendedores();
+}
+
+// Función para transferir las comisiones a la clínica
+function transferirComisiones(vendedorId) {
+    let configuraciones = JSON.parse(localStorage.getItem('configuraciones')) || [];
+    configuraciones.forEach(config => {
+        if (config.vendedorId == vendedorId) {
+            config.vendedorId = 'clinica'; // Transferir comisión a la clínica
+        }
+    });
+    localStorage.setItem('configuraciones', JSON.stringify(configuraciones));
+}
+
+    </script>
+</body>
+</html>
