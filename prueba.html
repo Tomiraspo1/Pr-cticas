@@ -26,7 +26,7 @@
                     <div class="mb-3">
                         <label for="vendedor" class="form-label">Seleccionar Vendedor</label>
                         <select class="form-select" id="vendedor" aria-label="Seleccionar Vendedor">
-                            <!-- Opciones de vendedor serán llenadas dinámicamente -->
+                            <option value="general">General (General)</option> <!-- Opción General -->
                         </select>
                     </div>
 
@@ -140,7 +140,7 @@
             let selectFiltroVendedor = document.getElementById('filtroVendedor');
             let tableBody = document.getElementById('vendedoresTable').getElementsByTagName('tbody')[0];
 
-            selectVendedor.innerHTML = '';
+            selectVendedor.innerHTML = '<option value="general">General</option>'; // Opción General
             selectFiltroVendedor.innerHTML = '<option value="">Todos</option>';
             tableBody.innerHTML = '';
 
@@ -172,16 +172,33 @@
             let fecha = now.toLocaleDateString();
             let hora = now.toLocaleTimeString();
 
-            let venta = {
-                vendedorId: vendedorId,
-                comisionClinica: comisionClinica,
-                comisionVendedor: comisionVendedor,
-                fecha: fecha,
-                hora: hora
-            };
-
             let ventas = JSON.parse(localStorage.getItem('ventas')) || [];
-            ventas.push(venta);
+
+            if (vendedorId === "general") {
+                // Si selecciona "General", registrar la venta para todos los vendedores
+                let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+                vendedores.forEach(vendedor => {
+                    let venta = {
+                        vendedorId: vendedor.id,
+                        comisionClinica: comisionClinica,
+                        comisionVendedor: comisionVendedor,
+                        fecha: fecha,
+                        hora: hora
+                    };
+                    ventas.push(venta);
+                });
+            } else {
+                // Si selecciona un vendedor específico
+                let venta = {
+                    vendedorId: vendedorId,
+                    comisionClinica: comisionClinica,
+                    comisionVendedor: comisionVendedor,
+                    fecha: fecha,
+                    hora: hora
+                };
+                ventas.push(venta);
+            }
+
             localStorage.setItem('ventas', JSON.stringify(ventas));
 
             alert('Venda registrada com sucesso!');
