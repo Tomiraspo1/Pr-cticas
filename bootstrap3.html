@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de comissões - Clínica</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Cambia el color de los paneles a un rojo menos agresivo */
+        .panel-danger > .panel-heading {
+            background-color: #e57373; /* Rojo más claro */
+            border-color: #e57373;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Gestão de comissões</h1>
+
+        <!-- Panel de Configuración -->
+        <div class="panel panel-danger">
+            <div class="panel-heading">
+                Configuração da Comissão
+            </div>
+            <div class="panel-body">
+                <form id="comissionForm">
+                    <div class="form-group">
+                        <label for="divisionRange">Divisão da Comissão (Clínica/vendedor)</label>
+                        <input type="range" class="form-control" id="divisionRange" min="0" max="100" value="50" oninput="updateValues()">
+                        <p>Clínica: <span id="rangeValue">50%</span> / Vendedor: <span id="vendedorValue">50%</span></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vendedor">Seleccionar Vendedor</label>
+                        <select class="form-control" id="vendedor" aria-label="Seleccionar Vendedor">
+                            <option value="general">General (General)</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-default" onclick="guardarConfiguracion()">Guardar configuração</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Panel de Ventas -->
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                Realizar Venda
+            </div>
+            <div class="panel-body">
+                <button class="btn btn-success" onclick="registrarVenta()">Registrar venda</button>
+            </div>
+        </div>
+
+        <!-- Panel de Comisiones -->
+        <div class="panel panel-danger">
+            <div class="panel-heading">
+                Comissões actuais
+            </div>
+            <div class="panel-body">
+                <table class="table table-striped" id="comisionesTable">
+                    <thead>
+                        <tr>
+                            <th>Plano</th>
+                            <th>Vendedor</th>
+                            <th>Código do vendedor</th>
+                            <th>Comissão Clínica</th>
+                            <th>Comissão do vendedor</th>
+                            <th>Data e Hora de venda</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Registros de comisiones serán llenados dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Panel de Filtro por Vendedor -->
+        <div class="panel panel-danger">
+            <div class="panel-heading">
+                Filtrar por Vendedor
+            </div>
+            <div class="panel-body">
+                <select class="form-control" id="filtroVendedor" onchange="filtrarPorVendedor()">
+                    <!-- Opciones de vendedor serán llenadas dinámicamente -->
+                </select>
+            </div>
+        </div>
+
+        <!-- Panel de Vendedores -->
+        <div class="panel panel-danger">
+            <div class="panel-heading">
+                Gestão de Vendedores
+            </div>
+            <div class="panel-body">
+                <input type="text" id="newVendedor" class="form-control" placeholder="Nome do novo vendedor">
+                <input type="text" id="vendedorCodigo" class="form-control" placeholder="Código do vendedor">
+                <button class="btn btn-default" onclick="adicionarVendedor()">Adicionar novo vendedor</button>
+                <table class="table table-hover" id="vendedoresTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Código do vendedor</th>
+                            <th>Acções</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Lista de vendedores será llenada dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Panel de Retiro de Dinero -->
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                Retirar Dinheiro (Wallet)
+            </div>
+            <div class="panel-body">
+                <button class="btn btn-success" onclick="retirarDinero()">Retirar Comissões</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateValues() {
+            let division = document.getElementById('divisionRange').value;
+            document.getElementById('rangeValue').textContent = division + '%';
+            document.getElementById('vendedorValue').textContent = (100 - division) + '%';
+        }
+
+        function iniciarDatos() {
+            if (!localStorage.getItem('vendedores')) {
+                localStorage.setItem('vendedores', JSON.stringify([
+                    { id: 1, nombre: 'Vendedor 1', codigo: 'V12345' },
+                    { id: 2, nombre: 'Vendedor 2', codigo: 'V67890' }
+                ]));
+            }
+            cargarVendedores();
+            cargarComisiones();
+        }
+
+        function cargarVendedores() {
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let selectVendedor = document.getElementById('vendedor');
+            let selectFiltroVendedor = document.getElementById('filtroVendedor');
+            let tableBody = document.getElementById('vendedoresTable').getElementsByTagName('tbody')[0];
+
+            selectVendedor.innerHTML = '<option value="general">General</option>';
+            selectFiltroVendedor.innerHTML = '<option value="">Todos</option>';
+            tableBody.innerHTML = '';
+
+            vendedores.forEach(vendedor => {
+                let option = document.createElement('option');
+                option.value = vendedor.id;
+                option.textContent = vendedor.nombre;
+                selectVendedor.appendChild(option);
+                selectFiltroVendedor.appendChild(option.cloneNode(true));
+
+                let row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${vendedor.nombre}</td>
+                    <td>${vendedor.codigo}</td>
+                    <td>
+                        <button class="btn btn-default" onclick="editarVendedor(${vendedor.id})">Editar</button>
+                        <button class="btn btn-danger" onclick="eliminarVendedor(${vendedor.id})">Eliminar</button>
+                    </td>
+                `;
+            });
+        }
+
+        function registrarVenta() {
+            let vendedorId = document.getElementById('vendedor').value;
+            let comisionClinica = document.getElementById('divisionRange').value;
+            let comisionVendedor = 100 - comisionClinica;
+
+            let now = new Date();
+            let fecha = now.toLocaleDateString();
+            let hora = now.toLocaleTimeString();
+
+            let ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+
+            if (vendedorId === "general") {
+                let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+                vendedores.forEach(vendedor => {
+                    let venta = {
+                        vendedorId: vendedor.id,
+                        comisionClinica: comisionClinica,
+                        comisionVendedor: comisionVendedor,
+                        fecha: fecha,
+                        hora: hora
+                    };
+                    ventas.push(venta);
+                });
+            } else {
+                let venta = {
+                    vendedorId: vendedorId,
+                    comisionClinica: comisionClinica,
+                    comisionVendedor: comisionVendedor,
+                    fecha: fecha,
+                    hora: hora
+                };
+                ventas.push(venta);
+            }
+
+            localStorage.setItem('ventas', JSON.stringify(ventas));
+
+            alert('Venda registrada com sucesso!');
+            cargarComisiones();
+        }
+
+        function cargarComisiones() {
+            let ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let tableBody = document.getElementById('comisionesTable').getElementsByTagName('tbody')[0];
+
+            tableBody.innerHTML = '';
+
+            ventas.forEach(venta => {
+                let vendedor = vendedores.find(v => v.id == venta.vendedorId);
+                let row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>Plano A</td>
+                    <td>${vendedor.nombre}</td>
+                    <td>${vendedor.codigo}</td>
+                    <td>${venta.comisionClinica}%</td>
+                    <td>${venta.comisionVendedor}%</td>
+                    <td>${venta.fecha} ${venta.hora}</td>
+                `;
+            });
+        }
+
+        function filtrarPorVendedor() {
+            let filtro = document.getElementById('filtroVendedor').value;
+            let ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let tableBody = document.getElementById('comisionesTable').getElementsByTagName('tbody')[0];
+
+            tableBody.innerHTML = '';
+
+            let ventasFiltradas = filtro ? ventas.filter(venta => venta.vendedorId == filtro) : ventas;
+
+            ventasFiltradas.forEach(venta => {
+                let vendedor = vendedores.find(v => v.id == venta.vendedorId);
+                let row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>Plano A</td>
+                    <td>${vendedor.nombre}</td>
+                    <td>${vendedor.codigo}</td>
+                    <td>${venta.comisionClinica}%</td>
+                    <td>${venta.comisionVendedor}%</td>
+                    <td>${venta.fecha} ${venta.hora}</td>
+                `;
+            });
+        }
+
+        function retirarDinero() {
+            let ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+            ventas = [];
+            localStorage.setItem('ventas', JSON.stringify(ventas));
+            alert('Dinheiro retirado com sucesso!');
+            cargarComisiones();
+        }
+
+        function adicionarVendedor() {
+            let nuevoNombre = document.getElementById('newVendedor').value;
+            let nuevoCodigo = document.getElementById('vendedorCodigo').value;
+            if (nuevoNombre === '' || nuevoCodigo === '') {
+                alert('Por favor, insira o nome e o código do vendedor.');
+                return;
+            }
+
+            let vendedores = JSON.parse(localStorage.getItem('vendedores'));
+            let nuevoVendedor = {
+                id: vendedores.length + 1,
+                nombre: nuevoNombre,
+                codigo: nuevoCodigo
+            };
+
+            vendedores.push(nuevoVendedor);
+            localStorage.setItem('vendedores', JSON.stringify(vendedores));
+            cargarVendedores();
+            document.getElementById('newVendedor').value = '';
+            document.getElementById('vendedorCodigo').value = '';
+        }
+
+        window.onload = iniciarDatos;
+    </script>
+</body>
+</html>
